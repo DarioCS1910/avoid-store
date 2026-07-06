@@ -5,55 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ΛVØID — Product</title>
   <style>
+    :root{
+      --bg:#0a0a0a;--surface:#111;--border:#222;
+      --text:#fff;--text-muted:#888;--text-faint:#444;
+    }
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Arial',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh}
-    header{display:flex;justify-content:space-between;align-items:center;padding:20px 40px;border-bottom:1px solid #222}
-    .logo{font-size:1.5rem;font-weight:900;letter-spacing:4px;text-decoration:none;color:#fff}
-    .cart-btn{background:none;border:1px solid #fff;color:#fff;padding:8px 18px;cursor:pointer;font-size:.85rem;letter-spacing:2px}
+    body{font-family:'Arial',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    header{display:flex;justify-content:space-between;align-items:center;padding:20px 40px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;background:var(--bg)}
+    .logo{font-size:1.5rem;font-weight:900;letter-spacing:4px;text-decoration:none;color:var(--text)}
+    .cart-btn{background:none;border:1px solid var(--text);color:var(--text);padding:8px 18px;cursor:pointer;font-size:.85rem;letter-spacing:2px}
+    .cart-btn:hover{background:var(--text);color:var(--bg)}
     main{max-width:1000px;margin:40px auto;padding:0 20px}
+    .breadcrumb{font-size:.75rem;letter-spacing:2px;color:var(--text-muted);margin-bottom:32px}
+    .breadcrumb a{color:var(--text-muted);text-decoration:none}
+    .breadcrumb a:hover{color:var(--text)}
     .product-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start}
-    .product-img{width:100%;aspect-ratio:3/4;background:#111;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .product-img{width:100%;aspect-ratio:3/4;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden}
     .product-img img{width:100%;height:100%;object-fit:cover}
-    .product-img .no-img{color:#333;font-size:3rem;letter-spacing:4px}
-    .product-info h1{font-size:1.6rem;letter-spacing:3px;margin-bottom:10px}
-    .product-price{font-size:1.3rem;margin-bottom:24px;color:#ccc}
-    .product-info p{color:#777;font-size:.9rem;line-height:1.7;margin-bottom:24px}
-    .size-label{font-size:.75rem;letter-spacing:2px;color:#aaa;margin-bottom:10px}
-    .sizes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
-    .size-btn{padding:8px 14px;border:1px solid #333;background:none;color:#fff;cursor:pointer;font-size:.85rem;min-width:48px;text-align:center}
-    .size-btn.active{border-color:#fff;background:#fff;color:#000}
-    .btn-add{width:100%;padding:16px;background:#fff;color:#000;border:none;font-size:.95rem;font-weight:700;letter-spacing:3px;cursor:pointer;text-transform:uppercase;margin-bottom:12px}
+    .product-img .no-img{color:var(--text-faint);font-size:3rem;letter-spacing:4px;font-weight:900}
+    .product-info{}
+    .product-brand{font-size:.75rem;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px}
+    .product-info h1{font-size:1.6rem;letter-spacing:3px;margin-bottom:12px;line-height:1.2}
+    .product-price{font-size:1.4rem;margin-bottom:20px;font-weight:700}
+    .product-desc{color:var(--text-muted);font-size:.9rem;line-height:1.7;margin-bottom:28px;border-top:1px solid var(--border);padding-top:20px}
+    .size-label{font-size:.75rem;letter-spacing:2px;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase}
+    .sizes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+    .size-btn{padding:8px 14px;border:1px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;font-size:.85rem;min-width:52px;text-align:center;transition:all .15s}
+    .size-btn:hover{border-color:var(--text-muted);color:var(--text)}
+    .size-btn.active{border-color:var(--text);background:var(--text);color:var(--bg)}
+    .btn-add{width:100%;padding:16px;background:var(--text);color:var(--bg);border:none;font-size:.95rem;font-weight:700;letter-spacing:3px;cursor:pointer;text-transform:uppercase;margin-bottom:12px;transition:background .2s}
     .btn-add:hover{background:#e0e0e0}
-    .btn-back{display:block;text-align:center;padding:12px;border:1px solid #333;color:#aaa;text-decoration:none;font-size:.8rem;letter-spacing:2px}
-    .btn-back:hover{border-color:#fff;color:#fff}
-    #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:12px 32px;font-weight:700;letter-spacing:2px;font-size:.85rem;display:none;z-index:999}
-    @media(max-width:700px){.product-grid{grid-template-columns:1fr}header{padding:16px 20px}}
+    .btn-add:disabled{background:var(--text-faint);cursor:not-allowed}
+    .btn-back{display:block;text-align:center;padding:12px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;font-size:.8rem;letter-spacing:2px;transition:all .15s}
+    .btn-back:hover{border-color:var(--text);color:var(--text)}
+    .stock-note{font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:12px;letter-spacing:1px}
+    #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:12px 32px;font-weight:700;letter-spacing:2px;font-size:.85rem;display:none;z-index:999;white-space:nowrap}
+    @media(max-width:700px){
+      .product-grid{grid-template-columns:1fr}
+      header{padding:16px 20px}
+    }
   </style>
 </head>
 <body>
   <header>
     <a href="index.html" class="logo">ΛVØID</a>
-    <button class="cart-btn" onclick="location.href='checkout.html'">CART (<span id="cart-count">0</span>)</button>
+    <button class="cart-btn" id="cart-open-btn">CART (<span id="cart-count">0</span>)</button>
   </header>
 
   <main>
+    <div class="breadcrumb">
+      <a href="index.html">COLLECTION</a> &nbsp;/&nbsp; <span id="breadcrumb-name">...</span>
+    </div>
     <div class="product-grid">
       <div class="product-img" id="product-img-wrap">
         <span class="no-img">ΛVØID</span>
       </div>
       <div class="product-info">
+        <div class="product-brand" id="product-brand">ΛVØID</div>
         <h1 id="product-name">Loading...</h1>
         <div class="product-price" id="product-price"></div>
-        <p id="product-desc">Premium quality streetwear. Oversized fit. 100% cotton.</p>
+        <p class="product-desc" id="product-desc"></p>
         <div class="size-label">SELECT SIZE</div>
         <div class="sizes" id="sizes-container"></div>
-        <button class="btn-add" id="btn-add-cart">ADD TO CART</button>
+        <button class="btn-add" id="btn-add-cart" disabled>SELECT A SIZE</button>
         <a href="index.html" class="btn-back">← BACK TO COLLECTION</a>
+        <p class="stock-note">FREE SHIPPING ON ORDERS OVER &euro;150</p>
       </div>
     </div>
   </main>
 
-  <div id="toast">ADDED TO CART</div>
+  <div id="toast">ADDED TO CART ✓</div>
 
   <script src="products.js"></script>
   <script src="cart.js"></script>
@@ -62,55 +83,68 @@
     var currentProduct = null;
 
     function getParam(name) {
-      var params = new URLSearchParams(window.location.search);
-      return params.get(name);
+      return new URLSearchParams(window.location.search).get(name);
     }
 
     function updateCartCount() {
-      var items = window.WFCart || loadCart();
-      var count = items.reduce(function(acc, i) { return acc + (i.qty || 1); }, 0);
+      var items = window.WFCart || [];
+      var count = items.reduce(function(acc, i){ return acc + (i.qty || 1); }, 0);
       document.getElementById('cart-count').textContent = count;
     }
 
     function renderProduct() {
       var id = getParam('id');
       var products = window.WF_PRODUCTS || [];
-      currentProduct = products.find(function(p) { return p.id === id; });
+      currentProduct = products.find(function(p){ return p.id === id; });
+
       if (!currentProduct) {
-        document.getElementById('product-name').textContent = 'Product not found';
+        document.getElementById('product-name').textContent = 'PRODUCT NOT FOUND';
+        document.getElementById('btn-add-cart').textContent = 'NOT AVAILABLE';
         return;
       }
+
       document.title = 'ΛVØID — ' + currentProduct.name;
+      document.getElementById('breadcrumb-name').textContent = currentProduct.name;
+      document.getElementById('product-brand').textContent = currentProduct.brand || 'ΛVØID';
       document.getElementById('product-name').textContent = currentProduct.name;
       document.getElementById('product-price').textContent = '€' + currentProduct.price.toFixed(2);
+      document.getElementById('product-desc').textContent = currentProduct.desc || 'Premium streetwear. Limited drop.';
+
       if (currentProduct.img) {
-        var imgWrap = document.getElementById('product-img-wrap');
-        imgWrap.innerHTML = '<img src="' + currentProduct.img + '" alt="' + currentProduct.name + '" onerror="this.parentElement.innerHTML=\'<span class=no-img>\u039bV\u00d8ID</span>\'">';
+        var wrap = document.getElementById('product-img-wrap');
+        wrap.innerHTML = '<img src="' + currentProduct.img + '" alt="' + currentProduct.name + '" onerror="this.parentElement.innerHTML=\'<span class=no-img>\u039bV\u00d8ID</span>\'">';
       }
+
       var sizesEl = document.getElementById('sizes-container');
       sizesEl.innerHTML = '';
-      (currentProduct.sizes || []).forEach(function(size) {
-        var btn = document.createElement('button');
-        btn.className = 'size-btn';
-        btn.textContent = size;
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('.size-btn').forEach(function(b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-          selectedSize = size;
+      var addBtn = document.getElementById('btn-add-cart');
+
+      if (!currentProduct.sizes || currentProduct.sizes.length === 0) {
+        selectedSize = 'ONE SIZE';
+        addBtn.textContent = 'ADD TO CART';
+        addBtn.disabled = false;
+      } else {
+        currentProduct.sizes.forEach(function(size) {
+          var btn = document.createElement('button');
+          btn.className = 'size-btn';
+          btn.textContent = size;
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('.size-btn').forEach(function(b){ b.classList.remove('active'); });
+            btn.classList.add('active');
+            selectedSize = size;
+            addBtn.textContent = 'ADD TO CART';
+            addBtn.disabled = false;
+          });
+          sizesEl.appendChild(btn);
         });
-        sizesEl.appendChild(btn);
-      });
+      }
     }
 
     document.getElementById('btn-add-cart').addEventListener('click', function() {
-      if (!currentProduct) return;
-      if (!selectedSize && currentProduct.sizes && currentProduct.sizes.length > 0) {
-        alert('Please select a size.');
-        return;
-      }
+      if (!currentProduct || this.disabled) return;
       window.addToCart({
         id: currentProduct.id,
-        brand: 'ΛVØID',
+        brand: currentProduct.brand || 'ΛVØID',
         name: currentProduct.name,
         price: currentProduct.price,
         img: currentProduct.img || '',
@@ -119,7 +153,11 @@
       updateCartCount();
       var toast = document.getElementById('toast');
       toast.style.display = 'block';
-      setTimeout(function() { toast.style.display = 'none'; }, 2000);
+      setTimeout(function(){ toast.style.display = 'none'; }, 2200);
+    });
+
+    document.getElementById('cart-open-btn').addEventListener('click', function(){
+      location.href = 'checkout.html';
     });
 
     renderProduct();
