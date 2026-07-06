@@ -27,7 +27,7 @@
     .btn-back{display:block;text-align:center;padding:12px;border:1px solid #333;color:#aaa;text-decoration:none;font-size:.8rem;letter-spacing:2px}
     .btn-back:hover{border-color:#fff;color:#fff}
     #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:12px 32px;font-weight:700;letter-spacing:2px;font-size:.85rem;display:none;z-index:999}
-    @media(max-width:700px){.product-grid{grid-template-columns:1fr}}
+    @media(max-width:700px){.product-grid{grid-template-columns:1fr}header{padding:16px 20px}}
   </style>
 </head>
 <body>
@@ -59,6 +59,7 @@
   <script src="cart.js"></script>
   <script>
     var selectedSize = null;
+    var currentProduct = null;
 
     function getParam(name) {
       var params = new URLSearchParams(window.location.search);
@@ -66,29 +67,29 @@
     }
 
     function updateCartCount() {
-      var items = loadCart();
-      var count = items.reduce(function(acc, i) { return acc + i.qty; }, 0);
+      var items = window.WFCart || loadCart();
+      var count = items.reduce(function(acc, i) { return acc + (i.qty || 1); }, 0);
       document.getElementById('cart-count').textContent = count;
     }
 
     function renderProduct() {
       var id = getParam('id');
       var products = window.WF_PRODUCTS || [];
-      var product = products.find(function(p) { return p.id === id; });
-      if (!product) {
+      currentProduct = products.find(function(p) { return p.id === id; });
+      if (!currentProduct) {
         document.getElementById('product-name').textContent = 'Product not found';
         return;
       }
-      document.title = 'ΛVØID — ' + product.name;
-      document.getElementById('product-name').textContent = product.name;
-      document.getElementById('product-price').textContent = '$' + product.price.toFixed(2);
-      if (product.img) {
+      document.title = 'ΛVØID — ' + currentProduct.name;
+      document.getElementById('product-name').textContent = currentProduct.name;
+      document.getElementById('product-price').textContent = '€' + currentProduct.price.toFixed(2);
+      if (currentProduct.img) {
         var imgWrap = document.getElementById('product-img-wrap');
-        imgWrap.innerHTML = '<img src="' + product.img + '" alt="' + product.name + '" onerror="this.parentElement.innerHTML=\'<span class=no-img>ΛVØID</span>\'">';
+        imgWrap.innerHTML = '<img src="' + currentProduct.img + '" alt="' + currentProduct.name + '" onerror="this.parentElement.innerHTML=\'<span class=no-img>\u039bV\u00d8ID</span>\'">';
       }
       var sizesEl = document.getElementById('sizes-container');
       sizesEl.innerHTML = '';
-      (product.sizes || []).forEach(function(size) {
+      (currentProduct.sizes || []).forEach(function(size) {
         var btn = document.createElement('button');
         btn.className = 'size-btn';
         btn.textContent = size;
@@ -99,18 +100,27 @@
         });
         sizesEl.appendChild(btn);
       });
-      document.getElementById('btn-add-cart').addEventListener('click', function() {
-        if (!selectedSize && product.sizes && product.sizes.length > 0) {
-          alert('Please select a size.');
-          return;
-        }
-        addToCart({ id: product.id, name: product.name, price: product.price, size: selectedSize, qty: 1 });
-        updateCartCount();
-        var toast = document.getElementById('toast');
-        toast.style.display = 'block';
-        setTimeout(function() { toast.style.display = 'none'; }, 2000);
-      });
     }
+
+    document.getElementById('btn-add-cart').addEventListener('click', function() {
+      if (!currentProduct) return;
+      if (!selectedSize && currentProduct.sizes && currentProduct.sizes.length > 0) {
+        alert('Please select a size.');
+        return;
+      }
+      window.addToCart({
+        id: currentProduct.id,
+        brand: 'ΛVØID',
+        name: currentProduct.name,
+        price: currentProduct.price,
+        img: currentProduct.img || '',
+        meta: selectedSize || ''
+      });
+      updateCartCount();
+      var toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(function() { toast.style.display = 'none'; }, 2000);
+    });
 
     renderProduct();
     updateCartCount();
