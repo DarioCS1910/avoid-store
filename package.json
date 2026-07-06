@@ -1,0 +1,26 @@
+{
+  "name": "avoid-store",
+  "version": "1.0.0",
+  "description": "AVOID Store - E-commerce streetwear. Tests con Playwright + Live Server.",
+  "scripts": {
+    "test": "node pw_test.js",
+    "test:fast": "node pw_fast.js",
+    "test:suite": "npx playwright test playwright_avoid.js",
+    "debug": "node pw_debug.js",
+    "debug2": "node pw_debug2.js",
+    "screenshots": "node pw_screenshots.js",
+    "install:browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.44.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": ["playwright", "e2e", "testing", "avoid-store"],
+  "author": "DarioCS1910",
+  "license": "MIT"
+}
