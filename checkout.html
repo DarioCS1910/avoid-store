@@ -20,16 +20,19 @@
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     #cart-summary{min-height:100px}
     .summary-item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a1a1a;font-size:.9rem}
-    .summary-item .item-name{color:#ccc}
-    .summary-total{display:flex;justify-content:space-between;padding:16px 0;font-size:1.1rem;font-weight:700;margin-top:10px}
+    .summary-item .item-name{color:#ccc;max-width:200px}
+    .summary-item .item-meta{color:#555;font-size:.8rem}
+    .summary-total{display:flex;justify-content:space-between;padding:16px 0;font-size:1.1rem;font-weight:700;margin-top:10px;border-top:1px solid #333}
     .empty-cart{color:#555;font-size:.9rem;padding:20px 0}
     .btn-place-order{width:100%;padding:16px;background:#fff;color:#000;border:none;font-size:.95rem;font-weight:700;letter-spacing:3px;cursor:pointer;margin-top:20px;text-transform:uppercase}
     .btn-place-order:hover{background:#e0e0e0}
+    .btn-place-order:disabled{background:#333;color:#666;cursor:not-allowed}
     #order-confirmation{display:none;text-align:center;padding:60px 20px}
     #order-confirmation h2{font-size:2rem;letter-spacing:3px;margin-bottom:16px}
     #order-confirmation p{color:#aaa;margin-bottom:30px}
     .btn-back{display:inline-block;padding:12px 32px;border:1px solid #fff;color:#fff;text-decoration:none;letter-spacing:2px;font-size:.85rem}
-    @media(max-width:700px){.checkout-grid{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}}
+    .ship-note{font-size:.8rem;color:#777;margin-top:8px;text-align:center}
+    @media(max-width:700px){.checkout-grid{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}header{padding:16px 20px}}
   </style>
 </head>
 <body>
@@ -106,8 +109,9 @@
           <div id="cart-summary"><p class="empty-cart">Loading cart...</p></div>
           <div class="summary-total">
             <span>TOTAL</span>
-            <span id="cart-total">$0.00</span>
+            <span id="cart-total">€0.00</span>
           </div>
+          <p class="ship-note" id="cart-ship-note"></p>
         </div>
       </div>
     </div>
@@ -123,33 +127,57 @@
   <script src="cart.js"></script>
   <script>
     function renderSummary() {
-      var items = loadCart();
+      var items = window.WFCart || loadCart();
       var summary = document.getElementById('cart-summary');
       var totalEl = document.getElementById('cart-total');
       if (!items || items.length === 0) {
-        summary.innerHTML = '<p class="empty-cart">Your cart is empty.</p>';
-        totalEl.textContent = '$0.00';
+        summary.innerHTML = '<p class="empty-cart">Your cart is empty. <a href="index.html" style="color:#fff">Go shopping</a></p>';
+        totalEl.textContent = '€0.00';
+        document.getElementById('place-order-btn').disabled = true;
         return;
       }
+      document.getElementById('place-order-btn').disabled = false;
       var html = '';
       var total = 0;
       items.forEach(function(item) {
-        var subtotal = item.price * item.qty;
+        var subtotal = item.price * (item.qty || 1);
         total += subtotal;
-        html += '<div class="summary-item"><span class="item-name">' + item.name + ' x' + item.qty + '</span><span>$' + subtotal.toFixed(2) + '</span></div>';
+        html += '<div class="summary-item">';
+        html += '<div><div class="item-name">' + item.name + '</div>';
+        if (item.meta) html += '<div class="item-meta">Size: ' + item.meta + '</div>';
+        html += '<div class="item-meta">Qty: ' + (item.qty || 1) + '</div></div>';
+        html += '<span>€' + subtotal.toFixed(2) + '</span>';
+        html += '</div>';
       });
       summary.innerHTML = html;
-      totalEl.textContent = '$' + total.toFixed(2);
+      totalEl.textContent = '€' + total.toFixed(2);
+      var noteEl = document.getElementById('cart-ship-note');
+      if (total >= 150) {
+        noteEl.textContent = '✓ Free shipping included';
+        noteEl.style.color = '#4caf50';
+      } else {
+        var diff = (150 - total).toFixed(2);
+        noteEl.textContent = 'Add €' + diff + ' more for free shipping';
+        noteEl.style.color = '#777';
+      }
     }
 
     document.getElementById('checkout-form').addEventListener('submit', function(e) {
       e.preventDefault();
-      var items = loadCart();
+      var items = window.WFCart || loadCart();
       if (!items || items.length === 0) {
         alert('Your cart is empty!');
         return;
       }
-      saveCart([]);
+      var firstName = document.getElementById('first-name').value.trim();
+      var lastName = document.getElementById('last-name').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var address = document.getElementById('address').value.trim();
+      if (!firstName || !lastName || !email || !address) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+      window.clearCart();
       document.getElementById('checkout-form-section').style.display = 'none';
       document.getElementById('order-confirmation').style.display = 'block';
     });
