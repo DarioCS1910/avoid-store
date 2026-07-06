@@ -1,0 +1,26 @@
+# Dependencias Node
+node_modules/
+
+# Playwright - resultados de tests
+test-results/
+playwright-report/
+
+# Capturas generadas por pw_screenshots.js
+screenshots/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Variables de entorno
+.env
+.env.local
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
