@@ -5,41 +5,157 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ΛVØID — Collection</title>
   <style>
+    :root{
+      --bg:#0a0a0a;
+      --surface:#111;
+      --border:#222;
+      --text:#fff;
+      --text-muted:#888;
+      --text-faint:#444;
+      --accent:#fff;
+    }
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Arial',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh}
-    header{display:flex;justify-content:space-between;align-items:center;padding:20px 40px;border-bottom:1px solid #222}
-    .logo{font-size:1.5rem;font-weight:900;letter-spacing:4px;text-decoration:none;color:#fff}
-    .cart-btn{background:none;border:1px solid #fff;color:#fff;padding:8px 18px;cursor:pointer;font-size:.85rem;letter-spacing:2px}
-    .hero{text-align:center;padding:80px 20px 60px}
-    .hero h1{font-size:3.5rem;font-weight:900;letter-spacing:8px;margin-bottom:16px}
-    .hero p{color:#555;font-size:.9rem;letter-spacing:3px;text-transform:uppercase}
-    .filters{display:flex;justify-content:center;gap:12px;padding:20px;flex-wrap:wrap}
-    .filter-btn{padding:8px 20px;border:1px solid #333;background:none;color:#aaa;cursor:pointer;font-size:.8rem;letter-spacing:2px;text-transform:uppercase}
-    .filter-btn.active,.filter-btn:hover{border-color:#fff;color:#fff}
+    body{font-family:'Arial',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+    /* NAV */
+    header{display:flex;justify-content:space-between;align-items:center;padding:20px 40px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;background:var(--bg)}
+    .logo{font-size:1.5rem;font-weight:900;letter-spacing:4px;text-decoration:none;color:var(--text)}
+    .nav-right{display:flex;align-items:center;gap:16px}
+    #nav-cart-btn{background:none;border:1px solid var(--text);color:var(--text);padding:8px 18px;cursor:pointer;font-size:.85rem;letter-spacing:2px;position:relative}
+    #nav-cart-badge,#cart-badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      background:var(--text);color:var(--bg);
+      border-radius:50%;width:18px;height:18px;font-size:.7rem;font-weight:700;
+      margin-left:6px;
+    }
+    #nav-cart-badge:not(.has-items){display:none}
+
+    /* HERO */
+    .hero{text-align:center;padding:80px 20px 50px}
+    .hero h1{font-size:3.5rem;font-weight:900;letter-spacing:8px;margin-bottom:12px}
+    .hero p{color:var(--text-muted);font-size:.9rem;letter-spacing:3px;text-transform:uppercase}
+
+    /* FILTERS */
+    .filters{display:flex;justify-content:center;gap:10px;padding:16px 20px 24px;flex-wrap:wrap}
+    .filter-btn{padding:8px 20px;border:1px solid var(--text-faint);background:none;color:var(--text-muted);cursor:pointer;font-size:.8rem;letter-spacing:2px;text-transform:uppercase;transition:all .2s}
+    .filter-btn.active,.filter-btn:hover{border-color:var(--text);color:var(--text)}
+
+    /* GRID */
     .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px;padding:2px 20px 60px}
     .product-card{background:#0f0f0f;cursor:pointer;transition:transform .2s}
     .product-card:hover{transform:scale(1.02)}
-    .product-card-img{width:100%;aspect-ratio:3/4;background:#111;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .product-card-img{width:100%;aspect-ratio:3/4;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden}
     .product-card-img img{width:100%;height:100%;object-fit:cover}
-    .product-card-img .ph{color:#222;font-size:1.5rem;letter-spacing:3px}
+    .product-card-img .ph{color:var(--text-faint);font-size:1.5rem;letter-spacing:3px;font-weight:900}
     .product-card-info{padding:16px}
-    .product-card-name{font-size:.85rem;letter-spacing:2px;margin-bottom:6px}
-    .product-card-price{font-size:.9rem;color:#888}
-    footer{border-top:1px solid #111;padding:30px 40px;text-align:center;color:#333;font-size:.75rem;letter-spacing:2px}
-    @media(max-width:600px){.hero h1{font-size:2.2rem}.products-grid{grid-template-columns:repeat(2,1fr)}header{padding:16px 20px}}
+    .product-card-name{font-size:.85rem;letter-spacing:2px;margin-bottom:4px}
+    .product-card-price{font-size:.9rem;color:var(--text-muted)}
+
+    /* CART DRAWER */
+    #cart-scrim{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+    #cart-scrim.open{opacity:1;pointer-events:all}
+    #cart-drawer{
+      position:fixed;top:0;right:0;width:380px;max-width:100vw;height:100vh;
+      background:#0d0d0d;border-left:1px solid var(--border);
+      z-index:201;display:flex;flex-direction:column;
+      transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+    }
+    #cart-drawer.open{transform:translateX(0)}
+    .cart-head{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:24px 20px 16px;border-bottom:1px solid var(--border);
+    }
+    .cart-head h2{font-size:1rem;letter-spacing:3px;font-weight:700}
+    #cart-head-count{color:var(--text-muted);font-size:.8rem;letter-spacing:1px;margin-top:2px}
+    #cart-close{background:none;border:none;color:var(--text);cursor:pointer;font-size:1.4rem;line-height:1;padding:4px}
+    #cart-items-list{flex:1;overflow-y:auto;padding:0 20px}
+    #cart-items-list::-webkit-scrollbar{width:4px}
+    #cart-items-list::-webkit-scrollbar-thumb{background:var(--text-faint);border-radius:2px}
+    .ci{display:flex;gap:12px;padding:16px 0;border-bottom:1px solid var(--border);animation:fadeIn .25s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .ci-img{width:70px;height:90px;background:var(--surface);flex-shrink:0;overflow:hidden}
+    .ci-img img{width:100%;height:100%;object-fit:cover}
+    .ci-img .ci-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:.7rem;letter-spacing:1px}
+    .ci-info{flex:1;min-width:0}
+    .ci-brand{font-size:.7rem;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase}
+    .ci-name{font-size:.85rem;letter-spacing:1px;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ci-meta{font-size:.75rem;color:var(--text-muted);margin-bottom:8px}
+    .ci-actions{display:flex;align-items:center;justify-content:space-between}
+    .ci-qty{display:flex;align-items:center;gap:8px}
+    .ci-qty-btn{background:none;border:1px solid var(--text-faint);color:var(--text);width:24px;height:24px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center}
+    .ci-qty-btn:hover{border-color:var(--text)}
+    .ci-qty-num{font-size:.9rem;min-width:20px;text-align:center}
+    .ci-price{font-size:.9rem;font-weight:700}
+    .ci-remove{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:.75rem;letter-spacing:1px;text-transform:uppercase;padding:0}
+    .ci-remove:hover{color:var(--text)}
+    .cart-empty{text-align:center;padding:60px 20px;color:var(--text-muted)}
+    .cart-empty p{margin-bottom:16px;font-size:.9rem;letter-spacing:1px}
+    .cart-empty a{color:var(--text);font-size:.8rem;letter-spacing:2px;border-bottom:1px solid var(--text-faint);text-decoration:none;padding-bottom:2px}
+    .cart-foot{padding:20px;border-top:1px solid var(--border)}
+    .cart-total-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:1rem;font-weight:700;letter-spacing:1px}
+    #cart-ship-note{font-size:.75rem;color:var(--text-muted);margin-bottom:16px;letter-spacing:.5px}
+    #cart-checkout-btn{
+      width:100%;padding:14px;background:var(--text);color:var(--bg);
+      border:none;font-size:.9rem;font-weight:700;letter-spacing:3px;
+      cursor:pointer;text-transform:uppercase;
+    }
+    #cart-checkout-btn:hover{background:#e0e0e0}
+    #cart-checkout-btn:disabled{background:var(--text-faint);cursor:not-allowed}
+
+    /* FOOTER */
+    footer{border-top:1px solid var(--border);padding:30px 40px;text-align:center;color:var(--text-faint);font-size:.75rem;letter-spacing:2px}
+
+    @media(max-width:600px){
+      .hero h1{font-size:2.2rem}
+      .products-grid{grid-template-columns:repeat(2,1fr)}
+      header{padding:16px 20px}
+      #cart-drawer{width:100vw}
+    }
   </style>
 </head>
 <body>
+
+  <!-- HEADER -->
   <header>
     <a href="index.html" class="logo">ΛVØID</a>
-    <button class="cart-btn" id="cart-btn" onclick="location.href='checkout.html'">CART (<span id="cart-count">0</span>)</button>
+    <div class="nav-right">
+      <button id="nav-cart-btn">
+        CART
+        <span id="nav-cart-badge">0</span>
+      </button>
+    </div>
   </header>
 
+  <!-- CART SCRIM -->
+  <div id="cart-scrim"></div>
+
+  <!-- CART DRAWER -->
+  <div id="cart-drawer" role="dialog" aria-label="Cart">
+    <div class="cart-head">
+      <div>
+        <h2>YOUR CART</h2>
+        <div id="cart-head-count">0 artículos</div>
+      </div>
+      <button id="cart-close" aria-label="Close cart">&times;</button>
+    </div>
+    <div id="cart-items-list"></div>
+    <div class="cart-foot">
+      <div class="cart-total-row">
+        <span>TOTAL</span>
+        <span id="cart-total">&euro;0</span>
+      </div>
+      <div id="cart-ship-note"></div>
+      <button id="cart-checkout-btn">CHECKOUT</button>
+    </div>
+  </div>
+
+  <!-- HERO -->
   <div class="hero">
     <h1>ΛVØID</h1>
     <p>DROP 001 — LIMITED COLLECTION</p>
   </div>
 
+  <!-- FILTERS -->
   <div class="filters">
     <button class="filter-btn active" data-filter="all">ALL</button>
     <button class="filter-btn" data-filter="tees">TEES</button>
@@ -48,6 +164,7 @@
     <button class="filter-btn" data-filter="accessories">ACCESSORIES</button>
   </div>
 
+  <!-- PRODUCT GRID -->
   <div class="products-grid" id="products-grid"></div>
 
   <footer>ΛVØID &copy; 2025 — ALL RIGHTS RESERVED</footer>
@@ -57,33 +174,37 @@
   <script>
     var currentFilter = 'all';
 
-    function updateCartCount() {
-      var items = loadCart();
-      var count = items.reduce(function(acc, i) { return acc + i.qty; }, 0);
-      document.getElementById('cart-count').textContent = count;
-    }
-
     function renderProducts(filter) {
       var grid = document.getElementById('products-grid');
       var products = window.WF_PRODUCTS || [];
-      var filtered = filter === 'all' ? products : products.filter(function(p) { return p.category === filter; });
+      var filtered = filter === 'all' ? products : products.filter(function(p){ return p.category === filter; });
       grid.innerHTML = '';
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#444;letter-spacing:2px">NO PRODUCTS FOUND</div>';
+        return;
+      }
       filtered.forEach(function(product) {
         var card = document.createElement('div');
         card.className = 'product-card';
-        card.innerHTML = '<div class="product-card-img">' +
-          (product.img ? '<img src="' + product.img + '" alt="' + product.name + '" onerror="this.parentElement.innerHTML=\'<span class=ph>ΛVØID</span>\'">' : '<span class="ph">ΛVØID</span>') +
-          '</div><div class="product-card-info"><div class="product-card-name">' + product.name + '</div><div class="product-card-price">$' + product.price.toFixed(2) + '</div></div>';
-        card.addEventListener('click', function() {
+        var imgHTML = product.img
+          ? '<img src="' + product.img + '" alt="' + product.name + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<span class=ph>\u039bV\u00d8ID</span>\'">'  
+          : '<span class="ph">ΛVØID</span>';
+        card.innerHTML =
+          '<div class="product-card-img">' + imgHTML + '</div>' +
+          '<div class="product-card-info">' +
+            '<div class="product-card-name">' + product.name + '</div>' +
+            '<div class="product-card-price">€' + product.price.toFixed(2) + '</div>' +
+          '</div>';
+        card.addEventListener('click', function(){
           location.href = 'product.html?id=' + product.id;
         });
         grid.appendChild(card);
       });
     }
 
-    document.querySelectorAll('.filter-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.filter-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
         btn.classList.add('active');
         currentFilter = btn.getAttribute('data-filter');
         renderProducts(currentFilter);
@@ -91,7 +212,7 @@
     });
 
     renderProducts('all');
-    updateCartCount();
   </script>
+
 </body>
 </html>
