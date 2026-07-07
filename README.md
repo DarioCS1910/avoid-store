@@ -1,133 +1,102 @@
-# AVOID Store
+# ΛVØID Store
 
-E-commerce streetwear brand. Vanilla HTML, CSS y JavaScript. Sin frameworks, sin dependencias de produccion.
+Tienda de streetwear con carrito de compra, pagina de producto y checkout.
 
-**Live Site:** https://dariocs1910.github.io/avoid-store/
-
----
-
-## Estructura del proyecto
+## Estructura de archivos
 
 ```
 avoid-store/
-├── index.html          # Coleccion principal con grid de productos + filtros
-├── product.html        # Detalle de producto (selector de talla, add to cart)
-├── checkout.html       # Checkout (formulario de envio + resumen del pedido)
-├── cart.js             # Cart v3 (persistencia dual: window.name + localStorage)
-├── products.js         # Catalogo de productos (expone window.WF_PRODUCTS)
-├── package.json        # Dependencias Playwright y scripts npm
-├── playwright.config.js # Configuracion de @playwright/test
-├── playwright_avoid.js  # Suite completa (22 tests, describe/test blocks)
-├── pw_test.js          # Suite principal (12 tests, runner propio)
-├── pw_fast.js          # Smoke test rapido para CI/CD (7 checks)
+├── index.html          # Pagina principal con catalogo y filtros
+├── product.html        # Pagina de detalle de producto
+├── checkout.html       # Pagina de checkout y confirmacion
+├── cart.js             # Cart v3 - logica oficial del carrito
+├── products.js         # Catalogo WF_PRODUCTS (expuesto en window)
+├── package.json        # Dependencias Node.js
+├── playwright.config.js
+├── playwright_avoid.js # Tests Playwright oficiales
+├── pw_fast.js          # Test rapido con servidor HTTP integrado
+├── pw_test.js          # Suite completa de tests (7 tests)
 ├── pw_debug.js         # Debug: imprime estado DOM y carrito
-├── pw_debug2.js        # Debug avanzado: flujo completo add-to-cart -> checkout
-├── pw_screenshots.js   # Genera 14 capturas de pantalla
-├── .gitignore          # Excluye node_modules, screenshots, test-results
-└── assets/
-    └── img/            # Imagenes de productos
+├── pw_debug2.js        # Debug avanzado: flujo completo de compra
+└── pw_screenshots.js   # Captura pantallas de todas las paginas
 ```
 
----
-
-## Instalacion rapida (1 vez)
+## Instalacion
 
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/DarioCS1910/avoid-store.git
 cd avoid-store
-
-# 2. Instalar Playwright
 npm install
-
-# 3. Instalar navegador Chromium
-npm run install:browsers
+npx playwright install chromium
 ```
 
----
+## Ejecucion - SIN Live Server (servidor HTTP integrado)
 
-## Ejecutar con Live Server + Playwright
+Todos los scripts arrancan su propio servidor HTTP. No necesitas Live Server ni ninguna extension.
 
-### Paso 1 - Abrir con Live Server en VS Code
-
-1. Abrir la carpeta `avoid-store/` en **VS Code**
-2. Click derecho en `index.html` > **"Open with Live Server"**
-3. El navegador se abre en `http://127.0.0.1:5500/index.html`
-4. **Dejar Live Server activo** mientras corres los tests
-
-### Paso 2 - Ejecutar tests (nueva terminal)
-
+### Test rapido (recomendado para verificar rapido)
 ```bash
-# Smoke test rapido (~10s) - recomendado para verificar todo funciona
-npm run test:fast
-
-# Suite principal completa (12 tests)
-npm test
-
-# Suite completa con @playwright/test runner (22 tests)
-npm run test:suite
+node pw_fast.js
 ```
+Ejecuta un smoke test completo en ~10 segundos. Usa puerto 7890.
 
----
-
-## Comandos disponibles
-
-| Comando | Descripcion | Tests |
-|---|---|---|
-| `npm run test:fast` | Smoke test rapido, ideal para CI/CD | 7 checks |
-| `npm test` | Suite principal completa | 12 tests |
-| `npm run test:suite` | Suite con @playwright/test (reportes HTML) | 22 tests |
-| `npm run debug` | Imprime estado DOM/carrito de las 3 paginas | - |
-| `npm run debug2` | Simula flujo completo con log detallado | - |
-| `npm run screenshots` | Genera 14 capturas en `screenshots/` | - |
-
----
-
-## Si Live Server usa un puerto diferente al 5500
-
-Por defecto todos los scripts apuntan a `http://127.0.0.1:5500`.
-Si tu Live Server usa otro puerto (ej: 5501), pasa la variable `BASE_URL`:
-
+### Suite completa de tests (7 tests)
 ```bash
-BASE_URL=http://127.0.0.1:5501 npm test
-BASE_URL=http://127.0.0.1:5501 npm run test:fast
+node pw_test.js
 ```
+Verifica: carga de productos, carrito, checkout, WF_PRODUCTS, flujo completo. Usa puerto 5500.
 
----
+### Debug - estado del DOM y carrito
+```bash
+node pw_debug.js
+```
+Imprime WF_PRODUCTS.length, items del carrito, campos del formulario. Usa puerto 5501.
 
-## Tests cubiertos
+### Debug avanzado - flujo completo paso a paso
+```bash
+node pw_debug2.js
+```
+Simula todo el flujo: index -> agregar -> product -> checkout -> submit. Usa puerto 5502.
 
-### index.html
-- Carga productos de `window.WF_PRODUCTS`
-- Filtros: ALL, TEES, HOODIES, PANTS, ACCESSORIES
-- Abrir/cerrar drawer del carrito
-- Badge del carrito se actualiza al anadir producto
-- Drawer muestra items anadidos
+### Capturas de pantalla
+```bash
+node pw_screenshots.js
+```
+Genera capturas PNG en `./screenshots/`. Usa puerto 5503.
 
-### product.html
-- Carga producto por `?id=` query param
-- Muestra titulo, imagen, precio, descripcion
-- Selector de talla (`.size-btn`)
-- Boton `#add-to-cart-btn` funciona
-- Breadcrumb con link a coleccion
+## Ejecucion - CON Live Server (opcional)
 
-### checkout.html
-- Campos de formulario: nombre, email, direccion, ciudad, zip, pais
-- Campos de pago: numero de tarjeta, expiry, CVV
-- Resumen del pedido con precios en Euro
-- Total del carrito correcto
-- Completar pedido muestra `#order-confirmation`
-- Nota de envio gratis con >= 150 EUR
+Si prefieres usar Live Server de VS Code:
+1. Abre la carpeta en VS Code
+2. Click derecho en `index.html` > "Open with Live Server"
+3. Live Server arranca en `http://127.0.0.1:5500`
+4. Para los tests Playwright en modo Live Server:
+   ```bash
+   npx playwright test
+   ```
 
-### Cart - Persistencia
-- Carrito persiste entre paginas via `localStorage`
-- `clearCart()` vacia el carrito correctamente
+## Resumen de comandos
 
----
+| Comando | Descripcion | Puerto |
+|---------|-------------|--------|
+| `node pw_fast.js` | Smoke test rapido | 7890 |
+| `node pw_test.js` | Suite 7 tests | 5500 |
+| `node pw_debug.js` | Debug DOM/carrito | 5501 |
+| `node pw_debug2.js` | Debug flujo completo | 5502 |
+| `node pw_screenshots.js` | Capturas PNG | 5503 |
+| `npx playwright test` | Tests con config (Live Server) | 5500 |
 
-## Tecnologias
+## Tecnologia
 
-- **HTML/CSS/JS** puro — sin frameworks
-- **Playwright** — testing E2E
-- **GitHub Pages** — despliegue automatico
-- **Live Server** (VS Code) — desarrollo local
+- HTML5, CSS3, JavaScript vanilla
+- Cart v3 con localStorage y window.name
+- WF_PRODUCTS como catalogo global en window
+- Playwright para testing E2E
+- Servidor HTTP integrado (Node.js http module)
+
+## Notas
+
+- `cart.js` es el carrito oficial (Cart v3). No crear versiones alternativas.
+- `products.js` expone `window.WF_PRODUCTS` para todas las paginas.
+- Cada script pw_*.js usa un puerto diferente para evitar conflictos si se ejecutan en paralelo.
+- Las capturas de pantalla se guardan en `./screenshots/` (ignorada en .gitignore).
