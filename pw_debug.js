@@ -1,13 +1,51 @@
 // ============================================================
 // AVOID Store - pw_debug.js
 // Herramienta de depuracion: imprime estado DOM y carrito
-// Uso: node pw_debug.js  (requiere: npm i playwright)
+// SERVIDOR HTTP INTEGRADO - NO necesita Live Server
+// Uso: node pw_debug.js
 // ============================================================
 const { chromium } = require('playwright');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:5500';
+const PORT = 5501;
+const BASE = 'http://127.0.0.1:' + PORT;
+const ROOT = __dirname;
+
+const MIME = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.css':  'text/css',
+  '.png':  'image/png',
+  '.jpg':  'image/jpeg',
+  '.svg':  'image/svg+xml',
+  '.ico':  'image/x-icon',
+};
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let filePath = path.join(ROOT, req.url.split('?')[0]);
+      if (filePath.endsWith('/') || !path.extname(filePath)) {
+        filePath = path.join(ROOT, 'index.html');
+      }
+      const ext = path.extname(filePath);
+      const mime = MIME[ext] || 'text/plain';
+      fs.readFile(filePath, (err, data) => {
+        if (err) { res.writeHead(404); res.end('Not found'); }
+        else { res.writeHead(200, { 'Content-Type': mime }); res.end(data); }
+      });
+    });
+    server.listen(PORT, '127.0.0.1', () => {
+      console.log('Servidor DEBUG en ' + BASE);
+      resolve(server);
+    });
+  });
+}
 
 (async () => {
+  const server = await startServer();
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
@@ -23,69 +61,50 @@ const BASE = process.env.BASE_URL || 'http://127.0.0.1:5500';
     console.error('[PAGE ERROR] ' + err.message);
   });
 
-  // --- DEBUG index.html
-  console.log('\n--- DEBUG: index.html');
+  // --- DEBUG index.html ---
+  console.log('\n--- DEBUG: index.html ---');
   await page.goto(BASE + '/index.html');
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(1500);
 
   const wfLen = await page.evaluate(() => {
     return typeof window.WF_PRODUCTS !== 'undefined' ? window.WF_PRODUCTS.length : -1;
   });
-  console.log('  window.WF_PRODUCTS.length = ' + wfLen);
+  console.log('WF_PRODUCTS length:', wfLen);
 
   const cartLen = await page.evaluate(() => {
-    return typeof window.WFCart !== 'undefined' ? window.WFCart.length : -1;
+    try {
+      const c = JSON.parse(localStorage.getItem('avoid_cart') || '[]');
+      return c.length;
+    } catch(e) { return 'ERROR: ' + e.message; }
   });
-  console.log('  window.WFCart.length      = ' + cartLen);
+  console.log('Cart en localStorage:', cartLen);
 
-  const productCards = await page.locator('.product-card').count();
-  console.log('  .product-card renderizadas = ' + productCards);
+  const cards = await page.locator('.product-card, .card, [data-id]').count();
+  console.log('Tarjetas de producto en DOM:', cards);
 
-  const filterBtns = await page.locator('.filter-btn').count();
-  console.log('  .filter-btn encontrados    = ' + filterBtns);
-
-  const cartDrawer = await page.locator('#cart-drawer').count();
-  console.log('  #cart-drawer existe        = ' + (cartDrawer > 0 ? 'Si' : 'No'));
-
-  // --- DEBUG product.html?id=p001
-  console.log('\n--- DEBUG: product.html?id=p001');
-  await page.goto(BASE + '/product.html?id=p001');
+  // --- DEBUG product.html ---
+  console.log('\n--- DEBUG: product.html?id=1 ---');
+  await page.goto(BASE + '/product.html?id=1');
   await page.waitForTimeout(1000);
+  const productTitle = await page.locator('h1, h2, .product-title, .product-name').first().textContent().catch(() => 'NO ENCONTRADO');
+  console.log('Titulo producto:', productTitle.trim());
 
-  const prodTitle = await page.locator('.product-title').count();
-  console.log('  .product-title existe      = ' + (prodTitle > 0 ? 'Si' : 'No'));
-
-  if (prodTitle > 0) {
-    const titleText = await page.locator('.product-title').textContent();
-    console.log('  Contenido de .product-title = "' + titleText.trim() + '"');
-  }
-
-  const sizeBtns = await page.locator('.size-btn').count();
-  console.log('  .size-btn encontrados      = ' + sizeBtns);
-
-  const addBtn = await page.locator('#add-to-cart-btn').count();
-  console.log('  #add-to-cart-btn existe    = ' + (addBtn > 0 ? 'Si' : 'No'));
-
-  // --- DEBUG checkout.html
-  console.log('\n--- DEBUG: checkout.html');
+  // --- DEBUG checkout.html ---
+  console.log('\n--- DEBUG: checkout.html ---');
   await page.goto(BASE + '/checkout.html');
   await page.waitForTimeout(1000);
+  const formFields = await page.locator('input, select, textarea').count();
+  console.log('Campos de formulario:', formFields);
 
-  const form = await page.locator('#checkout-form').count();
-  console.log('  #checkout-form existe      = ' + (form > 0 ? 'Si' : 'No'));
-
-  const summary = await page.locator('.summary-section').count();
-  console.log('  .summary-section existe    = ' + (summary > 0 ? 'Si' : 'No'));
-
-  const placeBtn = await page.locator('#place-order-btn').count();
-  console.log('  #place-order-btn existe    = ' + (placeBtn > 0 ? 'Si' : 'No'));
-
-  console.log('\n--- IDs clave en checkout.html:');
-  const ids = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('[id]')).map(el => el.id);
+  const checkoutCart = await page.evaluate(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem('avoid_cart') || '[]');
+      return JSON.stringify(c);
+    } catch(e) { return 'ERROR'; }
   });
-  ids.forEach(id => console.log('  #' + id));
+  console.log('Cart en checkout:', checkoutCart);
 
   await browser.close();
-  console.log('\n[pw_debug.js] Depuracion completa.');
+  server.close();
+  console.log('\n--- DEBUG completado ---');
 })();
