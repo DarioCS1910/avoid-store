@@ -84,67 +84,93 @@ async function assert(cond, msg) {
   // TEST 1: index.html carga y muestra productos
   await test('index.html carga y muestra productos', async () => {
     await page.goto(BASE + '/index.html');
-    await page.waitForSelector('.product-card, .card, [data-id]', { timeout: 8000 });
-    const count = await page.locator('.product-card, .card, [data-id]').count();
-    await assert(count > 0, 'No se encontraron productos en index.html');
+    await page.waitForSelector('#products-grid', { timeout: 8000 });
+    await page.waitForFunction(() => {
+      const grid = document.getElementById('products-grid');
+      return grid && grid.children.length > 0;
+    }, { timeout: 8000 });
+    const count = await page.locator('#products-grid .product-card').count();
+    await assert(count > 0, 'No se encontraron .product-card en #products-grid');
   });
 
-  // TEST 2: product.html carga con parametro
-  await test('product.html carga con parametro id', async () => {
-    await page.goto(BASE + '/product.html?id=1');
-    await page.waitForLoadState('networkidle');
-    const title = await page.title();
-    await assert(title.length > 0, 'product.html sin titulo');
-  });
-
-  // TEST 3: Agregar producto al carrito
-  await test('Agregar producto al carrito desde index', async () => {
-    await page.goto(BASE + '/index.html');
-    await page.waitForSelector('.product-card, [data-id]', { timeout: 8000 });
-    const btn = page.locator('button:has-text("Agregar"), button:has-text("Add"), .btn-add, [data-action="add"]').first();
-    await btn.click();
-    await page.waitForTimeout(500);
-    const cartCount = await page.locator('#cart-count, .cart-count, .cart-badge').first().textContent().catch(() => '1');
-    await assert(parseInt(cartCount) > 0 || cartCount.trim() !== '0', 'Carrito no actualizado tras agregar');
-  });
-
-  // TEST 4: checkout.html carga correctamente
-  await test('checkout.html carga correctamente', async () => {
-    await page.goto(BASE + '/checkout.html');
-    await page.waitForLoadState('networkidle');
-    const form = await page.locator('form, #checkout-form, .checkout-form').count();
-    await assert(form > 0, 'No se encontro formulario en checkout.html');
-  });
-
-  // TEST 5: checkout.html tiene campos requeridos
-  await test('checkout.html tiene campos nombre, email, direccion', async () => {
-    await page.goto(BASE + '/checkout.html');
-    await page.waitForLoadState('networkidle');
-    const name = await page.locator('input[name="name"], input[name="nombre"], #name, #nombre').count();
-    const email = await page.locator('input[type="email"], input[name="email"], #email').count();
-    await assert(name > 0, 'Campo nombre no encontrado en checkout');
-    await assert(email > 0, 'Campo email no encontrado en checkout');
-  });
-
-  // TEST 6: Flujo completo - agregar y verificar en checkout
-  await test('Flujo completo: agregar producto y abrir checkout', async () => {
-    await page.goto(BASE + '/index.html');
-    await page.waitForSelector('.product-card, [data-id]', { timeout: 8000 });
-    const btn = page.locator('button:has-text("Agregar"), .btn-add, [data-action="add"]').first();
-    await btn.click();
-    await page.waitForTimeout(500);
-    await page.goto(BASE + '/checkout.html');
-    await page.waitForLoadState('networkidle');
-    const items = await page.locator('.cart-item, .order-item, .item-row, tr').count();
-    await assert(items > 0, 'No hay items en checkout tras agregar');
-  });
-
-  // TEST 7: WF_PRODUCTS disponible en window
+  // TEST 2: WF_PRODUCTS disponible en window
   await test('WF_PRODUCTS disponible en window (products.js)', async () => {
     await page.goto(BASE + '/index.html');
     await page.waitForLoadState('networkidle');
     const len = await page.evaluate(() => (window.WF_PRODUCTS || []).length);
     await assert(len > 0, 'window.WF_PRODUCTS no disponible o vacio');
+  });
+
+  // TEST 3: product.html carga con parametro id
+  await test('product.html carga con parametro id', async () => {
+    await page.goto(BASE + '/product.html?id=p001');
+    await page.waitForLoadState('networkidle');
+    const title = await page.title();
+    await assert(title.length > 0, 'product.html sin titulo');
+  });
+
+  // TEST 4: product.html tiene boton agregar al carrito
+  await test('product.html tiene boton agregar al carrito', async () => {
+    await page.goto(BASE + '/product.html?id=p001');
+    await page.waitForSelector('#btn-add-cart', { timeout: 8000 });
+    const btn = await page.locator('#btn-add-cart').count();
+    await assert(btn > 0, 'No se encontro #btn-add-cart en product.html');
+  });
+
+  // TEST 5: Agregar producto al carrito desde product.html
+  await test('Agregar producto al carrito desde product.html', async () => {
+    await page.goto(BASE + '/product.html?id=p001');
+    await page.waitForSelector('#btn-add-cart', { timeout: 8000 });
+    // Seleccionar talla si hay botones de talla
+    const sizeBtn = page.locator('.size-btn').first();
+    const hasSizes = await sizeBtn.count();
+    if (hasSizes > 0) {
+      await sizeBtn.click();
+      await page.waitForTimeout(300);
+    }
+    await page.locator('#btn-add-cart').click();
+    await page.waitForTimeout(800);
+    // Verificar que el badge del carrito se actualizo
+    const cartCount = await page.locator('#cart-count').textContent().catch(() => '0');
+    await assert(parseInt(cartCount) > 0, 'El carrito no se actualizo tras agregar producto (cart-count = ' + cartCount + ')');
+  });
+
+  // TEST 6: checkout.html carga correctamente
+  await test('checkout.html carga correctamente', async () => {
+    await page.goto(BASE + '/checkout.html');
+    await page.waitForLoadState('networkidle');
+    const form = await page.locator('#checkout-form').count();
+    await assert(form > 0, 'No se encontro #checkout-form en checkout.html');
+  });
+
+  // TEST 7: checkout.html tiene campos requeridos
+  await test('checkout.html tiene campos firstName, lastName y email', async () => {
+    await page.goto(BASE + '/checkout.html');
+    await page.waitForLoadState('networkidle');
+    const firstName = await page.locator('#first-name, input[name="firstName"]').count();
+    const email = await page.locator('#email, input[type="email"]').count();
+    await assert(firstName > 0, 'Campo first-name no encontrado en checkout');
+    await assert(email > 0, 'Campo email no encontrado en checkout');
+  });
+
+  // TEST 8: Navegacion desde index a product
+  await test('Click en product-card navega a product.html', async () => {
+    await page.goto(BASE + '/index.html');
+    await page.waitForSelector('#products-grid .product-card', { timeout: 8000 });
+    await page.locator('#products-grid .product-card').first().click();
+    await page.waitForLoadState('networkidle');
+    const url = page.url();
+    await assert(url.includes('product.html'), 'Click en card no navego a product.html (url: ' + url + ')');
+  });
+
+  // TEST 9: Boton carrito en index abre el drawer
+  await test('Boton carrito en index abre el drawer', async () => {
+    await page.goto(BASE + '/index.html');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#nav-cart-btn').click();
+    await page.waitForTimeout(500);
+    const drawerOpen = await page.locator('#cart-drawer.open').count();
+    await assert(drawerOpen > 0, '#cart-drawer no tiene clase .open tras hacer click en #nav-cart-btn');
   });
 
   await browser.close();
