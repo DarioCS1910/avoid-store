@@ -1,175 +1,122 @@
 // ============================================================
 // AVOID Store - pw_screenshots.js
-// Toma capturas de pantalla de todas las paginas
-// Uso: node pw_screenshots.js  (requiere: npm i playwright)
-// Capturas guardadas en: screenshots/
+// Captura pantallas de todas las paginas para revision visual
+// SERVIDOR HTTP INTEGRADO - NO necesita Live Server
+// Uso: node pw_screenshots.js
+// Las capturas se guardan en ./screenshots/
 // ============================================================
 const { chromium } = require('playwright');
-const path = require('path');
+const http = require('http');
 const fs = require('fs');
+const path = require('path');
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:5500';
-const OUT_DIR = path.join(__dirname, 'screenshots');
+const PORT = 5503;
+const BASE = 'http://127.0.0.1:' + PORT;
+const ROOT = __dirname;
+const SHOTS_DIR = path.join(ROOT, 'screenshots');
 
-if (!fs.existsSync(OUT_DIR)) {
-  fs.mkdirSync(OUT_DIR, { recursive: true });
-  console.log('Directorio creado: ' + OUT_DIR);
+const MIME = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.css':  'text/css',
+  '.png':  'image/png',
+  '.jpg':  'image/jpeg',
+  '.svg':  'image/svg+xml',
+  '.ico':  'image/x-icon',
+};
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let filePath = path.join(ROOT, req.url.split('?')[0]);
+      if (filePath.endsWith('/') || !path.extname(filePath)) {
+        filePath = path.join(ROOT, 'index.html');
+      }
+      const ext = path.extname(filePath);
+      const mime = MIME[ext] || 'text/plain';
+      fs.readFile(filePath, (err, data) => {
+        if (err) { res.writeHead(404); res.end('Not found'); }
+        else { res.writeHead(200, { 'Content-Type': mime }); res.end(data); }
+      });
+    });
+    server.listen(PORT, '127.0.0.1', () => {
+      console.log('Servidor SCREENSHOTS en ' + BASE);
+      resolve(server);
+    });
+  });
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  const page = await ctx.newPage();
-
-  async function snap(name, setup) {
-    try {
-      await setup(page);
-      await page.waitForTimeout(600);
-      const file = path.join(OUT_DIR, name + '.png');
-      await page.screenshot({ path: file, fullPage: true });
-      console.log('  OK  screenshots/' + name + '.png');
-    } catch (e) {
-      console.error('  ERR [' + name + '] ' + e.message);
-    }
+  // Crear carpeta screenshots si no existe
+  if (!fs.existsSync(SHOTS_DIR)) {
+    fs.mkdirSync(SHOTS_DIR, { recursive: true });
+    console.log('Carpeta screenshots/ creada');
   }
 
-  console.log('\n=== AVOID Store - Capturas de pantalla ===\n');
+  const server = await startServer();
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  await page.setViewportSize({ width: 1280, height: 900 });
 
-  // 1. index.html - vista inicial
-  await snap('01_index', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.waitForSelector('.product-card');
-  });
+  console.log('\n=== Capturando pantallas AVOID Store ===\n');
 
-  // 2. index.html - filtro TEES
-  await snap('02_index_filter_tees', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.waitForSelector('.filter-btn');
-    await p.click('[data-filter="tees"]');
-  });
+  // 1. index.html
+  console.log('Capturando index.html...');
+  await page.goto(BASE + '/index.html');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(SHOTS_DIR, '01-index.png'), fullPage: true });
+  console.log('  Guardado: screenshots/01-index.png');
 
-  // 3. index.html - filtro HOODIES
-  await snap('03_index_filter_hoodies', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.waitForSelector('.filter-btn');
-    await p.click('[data-filter="hoodies"]');
-  });
+  // 2. index.html con filtro (si existe)
+  const filterBtn = page.locator('[data-filter], .filter-btn, .btn-filter').first();
+  const filterVisible = await filterBtn.isVisible().catch(() => false);
+  if (filterVisible) {
+    await filterBtn.click();
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: path.join(SHOTS_DIR, '02-index-filtered.png'), fullPage: true });
+    console.log('  Guardado: screenshots/02-index-filtered.png');
+  }
 
-  // 4. index.html - filtro PANTS
-  await snap('04_index_filter_pants', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.waitForSelector('.filter-btn');
-    await p.click('[data-filter="pants"]');
-  });
+  // 3. product.html
+  console.log('Capturando product.html?id=1...');
+  await page.goto(BASE + '/product.html?id=1');
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: path.join(SHOTS_DIR, '03-product.png'), fullPage: true });
+  console.log('  Guardado: screenshots/03-product.png');
 
-  // 5. index.html - filtro ACCESSORIES
-  await snap('05_index_filter_accessories', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.waitForSelector('.filter-btn');
-    await p.click('[data-filter="accessories"]');
-  });
+  // 4. Agregar producto y capturar carrito
+  console.log('Agregando producto al carrito...');
+  await page.goto(BASE + '/index.html');
+  await page.waitForTimeout(1000);
+  const addBtn = page.locator('button:has-text("Agregar"), .btn-add, [data-action="add"]').first();
+  const addVisible = await addBtn.isVisible().catch(() => false);
+  if (addVisible) {
+    await addBtn.click();
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(SHOTS_DIR, '04-index-with-cart.png'), fullPage: true });
+    console.log('  Guardado: screenshots/04-index-with-cart.png');
+  }
 
-  // 6. index.html - carrito drawer abierto (vacio)
-  await snap('06_index_cart_drawer_empty', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.waitForSelector('#nav-cart-btn');
-    await p.click('#nav-cart-btn');
-    await p.waitForSelector('#cart-drawer.open');
-  });
+  // 5. checkout.html
+  console.log('Capturando checkout.html...');
+  await page.goto(BASE + '/checkout.html');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(SHOTS_DIR, '05-checkout.png'), fullPage: true });
+  console.log('  Guardado: screenshots/05-checkout.png');
 
-  // 7. index.html - carrito drawer con producto
-  await snap('07_index_cart_drawer_with_item', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.waitForSelector('.product-card');
-    await p.locator('.product-card .btn-add').first().click();
-    await p.waitForTimeout(300);
-    await p.click('#nav-cart-btn');
-    await p.waitForSelector('#cart-drawer.open');
-  });
-
-  // 8. product.html - producto p001
-  await snap('08_product_p001', async p => {
-    await p.goto(BASE + '/product.html?id=p001');
-    await p.waitForSelector('.product-title');
-  });
-
-  // 9. product.html - producto p007 (hoodie)
-  await snap('09_product_p007', async p => {
-    await p.goto(BASE + '/product.html?id=p007');
-    await p.waitForSelector('.product-title');
-  });
-
-  // 10. product.html - talla seleccionada
-  await snap('10_product_size_selected', async p => {
-    await p.goto(BASE + '/product.html?id=p001');
-    await p.waitForSelector('.size-btn');
-    await p.locator('.size-btn').nth(1).click();
-  });
-
-  // 11. checkout.html - carrito vacio
-  await snap('11_checkout_empty', async p => {
-    await p.goto(BASE + '/checkout.html');
-    await p.waitForSelector('#checkout-form');
-  });
-
-  // 12. checkout.html - con producto en carrito
-  await snap('12_checkout_with_item', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.evaluate(() => {
-      var item = [{ uid:'sc_1', id:'p001', brand:'AVOID', name:'AVOID TEE BLACK', price:39.99, img:'', meta:'M', qty:1 }];
-      localStorage.setItem('wf_cart_v3', JSON.stringify(item));
-    });
-    await p.goto(BASE + '/checkout.html');
-    await p.waitForSelector('.summary-section');
-  });
-
-  // 13. checkout.html - formulario relleno
-  await snap('13_checkout_form_filled', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.evaluate(() => {
-      var item = [{ uid:'sc_2', id:'p002', brand:'AVOID', name:'AVOID TEE WHITE', price:39.99, img:'', meta:'L', qty:2 }];
-      localStorage.setItem('wf_cart_v3', JSON.stringify(item));
-    });
-    await p.goto(BASE + '/checkout.html');
-    await p.waitForSelector('#checkout-form');
-    await p.fill('#first-name', 'Dario');
-    await p.fill('#last-name', 'CS');
-    await p.fill('#email', 'dario@avoid.store');
-    await p.fill('#address', 'Calle Gran Via 42');
-    await p.fill('#city', 'Madrid');
-    await p.fill('#zip', '28013');
-    await p.selectOption('#country', 'Spain');
-    await p.fill('#card-number', '4111111111111111');
-    await p.fill('#expiry', '12/27');
-    await p.fill('#cvv', '123');
-  });
-
-  // 14. checkout.html - confirmacion de pedido
-  await snap('14_checkout_confirmation', async p => {
-    await p.goto(BASE + '/index.html');
-    await p.evaluate(() => {
-      var item = [{ uid:'sc_3', id:'p003', brand:'AVOID', name:'TEST PRODUCT', price:49.99, img:'', meta:'S', qty:1 }];
-      localStorage.setItem('wf_cart_v3', JSON.stringify(item));
-    });
-    await p.goto(BASE + '/checkout.html');
-    await p.waitForSelector('#checkout-form');
-    await p.fill('#first-name', 'Dario');
-    await p.fill('#last-name', 'CS');
-    await p.fill('#email', 'dario@avoid.store');
-    await p.fill('#address', 'Calle Test 1');
-    await p.fill('#city', 'Madrid');
-    await p.fill('#zip', '28001');
-    await p.selectOption('#country', 'Spain');
-    await p.fill('#card-number', '4111111111111111');
-    await p.fill('#expiry', '12/27');
-    await p.fill('#cvv', '123');
-    await p.click('#place-order-btn');
-    await p.waitForSelector('#order-confirmation');
-  });
+  // 6. checkout.html con formulario relleno
+  await page.locator('input[name="name"], input[name="nombre"], #name, #nombre').first().fill('Test Usuario').catch(() => {});
+  await page.locator('input[type="email"], #email').first().fill('test@avoid.com').catch(() => {});
+  await page.locator('input[name="address"], input[name="direccion"], #address, #direccion').first().fill('Calle Test 123').catch(() => {});
+  await page.screenshot({ path: path.join(SHOTS_DIR, '06-checkout-filled.png'), fullPage: true });
+  console.log('  Guardado: screenshots/06-checkout-filled.png');
 
   await browser.close();
+  server.close();
 
-  const files = fs.readdirSync(OUT_DIR).filter(f => f.endsWith('.png'));
-  console.log('\n=== ' + files.length + ' capturas guardadas en screenshots/ ===');
-  files.forEach(f => console.log('  ' + f));
+  // Listar archivos generados
+  const files = fs.readdirSync(SHOTS_DIR).filter(f => f.endsWith('.png'));
+  console.log('\n=== Capturas generadas (' + files.length + ') ===');
+  files.forEach(f => console.log('  screenshots/' + f));
+  console.log('\nListo.');
 })();
