@@ -1,145 +1,136 @@
 // ============================================================
 // AVOID Store - pw_debug2.js
-// Debug avanzado: valida flujo completo add-to-cart -> checkout
-// Uso: node pw_debug2.js  (requiere: npm i playwright)
+// Herramienta de depuracion avanzada: flujo completo con carrito
+// SERVIDOR HTTP INTEGRADO - NO necesita Live Server
+// Uso: node pw_debug2.js
 // ============================================================
 const { chromium } = require('playwright');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:5500';
+const PORT = 5502;
+const BASE = 'http://127.0.0.1:' + PORT;
+const ROOT = __dirname;
+
+const MIME = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.css':  'text/css',
+  '.png':  'image/png',
+  '.jpg':  'image/jpeg',
+  '.svg':  'image/svg+xml',
+  '.ico':  'image/x-icon',
+};
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let filePath = path.join(ROOT, req.url.split('?')[0]);
+      if (filePath.endsWith('/') || !path.extname(filePath)) {
+        filePath = path.join(ROOT, 'index.html');
+      }
+      const ext = path.extname(filePath);
+      const mime = MIME[ext] || 'text/plain';
+      fs.readFile(filePath, (err, data) => {
+        if (err) { res.writeHead(404); res.end('Not found'); }
+        else { res.writeHead(200, { 'Content-Type': mime }); res.end(data); }
+      });
+    });
+    server.listen(PORT, '127.0.0.1', () => {
+      console.log('Servidor DEBUG2 en ' + BASE);
+      resolve(server);
+    });
+  });
+}
 
 (async () => {
+  const server = await startServer();
   const browser = await chromium.launch({ headless: true });
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
-  const errors = [];
-  page.on('pageerror', err => errors.push(err.message));
   page.on('console', msg => {
-    if (msg.type() === 'error') errors.push('[console.error] ' + msg.text());
+    if (msg.type() === 'error') console.error('[BROWSER ERROR] ' + msg.text());
   });
+  page.on('pageerror', err => console.error('[PAGE ERROR] ' + err.message));
 
-  console.log('=== pw_debug2.js: Flujo completo AVOID Store ===\n');
+  console.log('\n=== DEBUG2: Flujo completo de compra ===\n');
 
-  // PASO 1: Cargar index.html y verificar productos
-  console.log('[1] Cargando index.html...');
+  // Paso 1: ir a index.html
+  console.log('Paso 1: Cargando index.html...');
   await page.goto(BASE + '/index.html');
-  await page.waitForTimeout(800);
-  const numProds = await page.locator('.product-card').count();
-  console.log('    Productos renderizados: ' + numProds);
+  await page.waitForTimeout(1500);
 
-  // PASO 2: Aplicar filtro ACCESSORIES
-  console.log('[2] Aplicando filtro ACCESSORIES...');
-  const accBtn = page.locator('[data-filter="accessories"]');
-  const accCount = await accBtn.count();
-  if (accCount > 0) {
-    await accBtn.click();
-    await page.waitForTimeout(400);
-    const filtered = await page.locator('.product-card').count();
-    console.log('    Productos en ACCESSORIES: ' + filtered);
-  } else {
-    console.log('    WARN: no se encontro filtro [data-filter="accessories"]');
-  }
+  const products = await page.locator('.product-card, .card, [data-id]').count();
+  console.log('  Productos encontrados:', products);
 
-  // PASO 3: Restaurar filtro ALL y anadir producto al carrito
-  console.log('[3] Volviendo a ALL y anadiendo primer producto...');
-  await page.locator('[data-filter="all"]').click();
-  await page.waitForTimeout(400);
+  const wfLen = await page.evaluate(() =>
+    typeof window.WF_PRODUCTS !== 'undefined' ? window.WF_PRODUCTS.length : -1
+  );
+  console.log('  WF_PRODUCTS.length:', wfLen);
 
-  const addBtns = page.locator('.product-card .btn-add');
-  const addCount = await addBtns.count();
-  console.log('    Botones .btn-add disponibles: ' + addCount);
-
-  if (addCount > 0) {
-    await addBtns.first().click();
-    await page.waitForTimeout(300);
-    const badge = await page.locator('#cart-badge').textContent().catch(() => '?');
-    console.log('    Badge carrito tras anadir: ' + badge);
-  } else {
-    console.log('    WARN: no hay botones .btn-add en index.html');
-  }
-
-  // PASO 4: Abrir y cerrar drawer del carrito
-  console.log('[4] Abriendo drawer del carrito...');
-  await page.locator('#nav-cart-btn').click().catch(() => console.log('    WARN: #nav-cart-btn no encontrado'));
-  await page.waitForTimeout(300);
-  const drawerOpen = await page.locator('#cart-drawer.open').count();
-  console.log('    Drawer abierto: ' + (drawerOpen > 0 ? 'SI' : 'NO'));
-  if (drawerOpen > 0) {
-    await page.locator('#cart-close').click().catch(() => {});
-    await page.waitForTimeout(200);
-    console.log('    Drawer cerrado.');
-  }
-
-  // PASO 5: Navegar a product.html?id=p002
-  console.log('[5] Navegando a product.html?id=p002...');
-  await page.goto(BASE + '/product.html?id=p002');
-  await page.waitForTimeout(800);
-
-  const ptitle = await page.locator('.product-title').textContent().catch(() => '(no encontrado)');
-  console.log('    Titulo producto: ' + ptitle.trim());
-
-  const pimg = await page.locator('.product-img').getAttribute('src').catch(() => '(sin img)');
-  console.log('    Imagen src: ' + pimg);
-
-  const pSizes = await page.locator('.size-btn').count();
-  console.log('    Tallas disponibles: ' + pSizes);
-
-  if (pSizes > 0) {
-    await page.locator('.size-btn').nth(1).click().catch(() => {});
-    console.log('    Talla seleccionada (index 1).');
-  }
-
-  const addToCartBtn = await page.locator('#add-to-cart-btn').count();
-  if (addToCartBtn > 0) {
-    await page.locator('#add-to-cart-btn').click();
-    await page.waitForTimeout(300);
-    const badge2 = await page.locator('#cart-badge').textContent().catch(() => '?');
-    console.log('    Badge tras anadir desde product.html: ' + badge2);
-  } else {
-    console.log('    WARN: #add-to-cart-btn no encontrado en product.html');
-  }
-
-  // PASO 6: Ir a checkout.html via goToCheckout
-  console.log('[6] Navegando a checkout.html...');
-  await page.goto(BASE + '/checkout.html');
-  await page.waitForTimeout(800);
-
-  const cartWFLen = await page.evaluate(() => (window.WFCart || []).length);
-  console.log('    window.WFCart.length en checkout: ' + cartWFLen);
-
-  const summaryText = await page.locator('.summary-section').textContent().catch(() => '');
-  const hasEuro = summaryText.includes('EUR') || summaryText.includes('\u20ac');
-  console.log('    Resumen contiene precio Euro: ' + (hasEuro ? 'SI' : 'NO'));
-
-  // PASO 7: Rellenar y enviar formulario
-  console.log('[7] Rellenando formulario de checkout...');
-  await page.fill('#first-name', 'Test').catch(() => console.log('    WARN: #first-name no encontrado'));
-  await page.fill('#last-name', 'User').catch(() => {});
-  await page.fill('#email', 'test@avoid.store').catch(() => {});
-  await page.fill('#address', 'Calle Test 42').catch(() => {});
-  await page.fill('#city', 'Barcelona').catch(() => {});
-  await page.fill('#zip', '08001').catch(() => {});
-  await page.selectOption('#country', 'Spain').catch(() => {});
-  await page.fill('#card-number', '4111111111111111').catch(() => {});
-  await page.fill('#expiry', '11/27').catch(() => {});
-  await page.fill('#cvv', '456').catch(() => {});
-
-  const placeBtn = await page.locator('#place-order-btn').count();
-  console.log('    #place-order-btn disponible: ' + (placeBtn > 0 ? 'SI' : 'NO'));
-
-  if (placeBtn > 0) {
-    const isDisabled = await page.locator('#place-order-btn').getAttribute('disabled');
-    console.log('    Boton deshabilitado: ' + (isDisabled !== null ? 'SI' : 'NO'));
-    await page.locator('#place-order-btn').click({ force: true });
+  // Paso 2: agregar primer producto
+  console.log('\nPaso 2: Agregando primer producto al carrito...');
+  const addBtn = page.locator('button:has-text("Agregar"), button:has-text("Add"), .btn-add, [data-action="add"]').first();
+  const btnVisible = await addBtn.isVisible().catch(() => false);
+  if (btnVisible) {
+    await addBtn.click();
     await page.waitForTimeout(500);
-    const confirmed = await page.locator('#order-confirmation').isVisible().catch(() => false);
-    console.log('    Confirmacion de pedido visible: ' + (confirmed ? 'SI' : 'NO'));
+    console.log('  Boton de agregar clickeado OK');
+  } else {
+    console.log('  AVISO: boton agregar no visible, intentando click en tarjeta...');
+    await page.locator('.product-card, [data-id]').first().click();
+    await page.waitForTimeout(500);
   }
 
-  // Resumen de errores de consola/JS
-  console.log('\n=== Errores de consola/JS detectados: ' + errors.length + ' ===');
-  errors.forEach((e, i) => console.error('  [' + (i + 1) + '] ' + e));
+  const cartState = await page.evaluate(() => {
+    try {
+      return JSON.parse(localStorage.getItem('avoid_cart') || '[]');
+    } catch(e) { return []; }
+  });
+  console.log('  Cart tras agregar:', JSON.stringify(cartState));
+
+  // Paso 3: ir a product.html
+  console.log('\nPaso 3: Cargando product.html?id=1...');
+  await page.goto(BASE + '/product.html?id=1');
+  await page.waitForTimeout(1000);
+  const pTitle = await page.locator('h1, h2, .product-title').first().textContent().catch(() => 'N/A');
+  console.log('  Titulo de producto:', pTitle.trim());
+
+  // Paso 4: ir a checkout.html
+  console.log('\nPaso 4: Cargando checkout.html...');
+  await page.goto(BASE + '/checkout.html');
+  await page.waitForTimeout(1500);
+
+  const fields = await page.locator('input, select, textarea').count();
+  console.log('  Campos del formulario:', fields);
+
+  const orderItems = await page.locator('.cart-item, .order-item, .item-row, tbody tr').count();
+  console.log('  Items en orden/tabla:', orderItems);
+
+  const total = await page.locator('.total, .order-total, #total, [class*="total"]').first().textContent().catch(() => 'N/A');
+  console.log('  Total mostrado:', total.trim());
+
+  // Paso 5: intentar submit del formulario
+  console.log('\nPaso 5: Rellenando y enviando formulario...');
+  await page.locator('input[name="name"], input[name="nombre"], #name, #nombre').first().fill('Test Usuario').catch(() => {});
+  await page.locator('input[type="email"], #email').first().fill('test@avoid.com').catch(() => {});
+  await page.locator('input[name="address"], input[name="direccion"], #address, #direccion').first().fill('Calle Test 123').catch(() => {});
+
+  const submitBtn = page.locator('button[type="submit"], input[type="submit"], .btn-submit, #btn-order').first();
+  const submitVisible = await submitBtn.isVisible().catch(() => false);
+  if (submitVisible) {
+    await submitBtn.click();
+    await page.waitForTimeout(1000);
+    console.log('  Formulario enviado');
+    const confirmation = await page.locator('.confirmation, .success, #confirmation, [class*="confirm"]').count();
+    console.log('  Mensaje de confirmacion:', confirmation > 0 ? 'SI' : 'NO');
+  } else {
+    console.log('  AVISO: boton submit no encontrado');
+  }
 
   await browser.close();
-  console.log('\n[pw_debug2.js] Completado.');
+  server.close();
+  console.log('\n=== DEBUG2 completado ===');
 })();
