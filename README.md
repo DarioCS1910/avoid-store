@@ -4,42 +4,28 @@ Tienda de streetwear urbano. Estructura multi-pagina con carrito persistente.
 
 ---
 
-## PASOS PARA EJECUTAR LOS TESTS (solo la primera vez)
+## COMO EJECUTAR LOS TESTS
 
-### PASO 1 — Instalar Node.js
+> Node.js y las dependencias ya estan instaladas. Solo hace falta hacer esto:
 
-1. Ve a: **https://nodejs.org**
-2. Descarga la version **LTS** (boton verde grande)
-3. Ejecuta el instalador y haz clic en **Next** en todo
-4. Cuando termine, cierra el instalador
+### PASO 1 — Descargar los cambios del repositorio
 
-### PASO 2 — Abrir CMD en la carpeta del proyecto
-
-1. Abre el Explorador de archivos
-2. Ve a la carpeta `avoid-store` (donde tienes los archivos)
-3. Haz clic en la barra de direcciones arriba
-4. Escribe `cmd` y pulsa Enter
-
-### PASO 3 — Instalar dependencias (solo la primera vez)
-
-Escribe estos comandos uno por uno y pulsa Enter despues de cada uno:
+Abre CMD en tu carpeta `avoid-store` y ejecuta:
 
 ```
-npm install
+git pull
 ```
 
-```
-npx playwright install chromium
-```
+### PASO 2 — Ejecutar los tests
 
-### PASO 4 — Ejecutar los tests
+Tests rapidos (5 checks, ~15 segundos):
 
-Para los **tests rapidos** (recomendado, ~15 segundos):
 ```
 node pw_fast.js
 ```
 
-Para los **tests completos** (9 tests, ~30 segundos):
+Tests completos (9 tests, ~30 segundos):
+
 ```
 node pw_test.js
 ```
@@ -62,6 +48,15 @@ node pw_test.js
 
 ---
 
+## ABRIR CMD EN LA CARPETA DEL PROYECTO
+
+1. Abre el Explorador de archivos
+2. Ve a la carpeta `avoid-store`
+3. Haz clic en la barra de direcciones arriba
+4. Escribe `cmd` y pulsa Enter
+
+---
+
 ## ARCHIVOS DEL PROYECTO
 
 | Archivo | Descripcion |
@@ -81,11 +76,3 @@ node pw_test.js
 - **index.html** → Grid de productos con filtros por categoria
 - **product.html** → Detalle de producto, selector de talla, boton agregar al carrito
 - **checkout.html** → Formulario de envio y resumen del pedido
-
----
-
-## REQUISITOS
-
-- Node.js 18 o superior
-- npm (incluido con Node.js)
-- Playwright (se instala con `npm install`)
