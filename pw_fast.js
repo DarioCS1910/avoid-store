@@ -1,16 +1,54 @@
 // ============================================================
 // AVOID Store - pw_fast.js
-// Smoke test rapido: verifica que las 3 paginas cargan OK
-// Ideal para CI/CD - completa en < 10 segundos
-// Uso: node pw_fast.js  (requiere: npm i playwright)
+// Smoke test rapido - SERVIDOR HTTP INTEGRADO
+// NO necesita Live Server ni nada externo
+// Uso: node pw_fast.js
 // ============================================================
 const { chromium } = require('playwright');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:5500';
+const PORT = 7890;
+const BASE = 'http://127.0.0.1:' + PORT;
+const ROOT = __dirname;
+
+// --- Servidor HTTP integrado ---
+const MIME = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.css':  'text/css',
+  '.png':  'image/png',
+  '.jpg':  'image/jpeg',
+  '.svg':  'image/svg+xml',
+  '.ico':  'image/x-icon',
+};
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let filePath = path.join(ROOT, req.url.split('?')[0]);
+      if (filePath.endsWith('/') || !path.extname(filePath)) {
+        filePath = path.join(ROOT, 'index.html');
+      }
+      const ext = path.extname(filePath).toLowerCase();
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.writeHead(404);
+          res.end('Not found: ' + req.url);
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': MIME[ext] || 'text/plain' });
+        res.end(data);
+      });
+    });
+    server.listen(PORT, '127.0.0.1', () => resolve(server));
+  });
+}
 
 const CHECKS = [
   {
-    name: 'index.html - carga',
+    name: 'index.html - carga productos',
     url: BASE + '/index.html',
     selector: '.product-card',
     check: async (page) => {
@@ -23,7 +61,7 @@ const CHECKS = [
     }
   },
   {
-    name: 'index.html - filtros',
+    name: 'index.html - filtros ALL/TEES/HOODIES/PANTS/ACCESSORIES',
     url: BASE + '/index.html',
     selector: '.filter-btn',
     check: async (page) => {
@@ -35,7 +73,7 @@ const CHECKS = [
     }
   },
   {
-    name: 'index.html - carrito drawer',
+    name: 'index.html - drawer del carrito se abre',
     url: BASE + '/index.html',
     selector: '#nav-cart-btn',
     check: async (page) => {
@@ -46,7 +84,7 @@ const CHECKS = [
     }
   },
   {
-    name: 'product.html - p001',
+    name: 'product.html - carga p001 con titulo y tallas',
     url: BASE + '/product.html?id=p001',
     selector: '.product-title',
     check: async (page) => {
@@ -59,7 +97,7 @@ const CHECKS = [
     }
   },
   {
-    name: 'product.html - add to cart',
+    name: 'product.html - add to cart actualiza badge',
     url: BASE + '/product.html?id=p001',
     selector: '.size-btn',
     check: async (page) => {
@@ -71,11 +109,11 @@ const CHECKS = [
     }
   },
   {
-    name: 'checkout.html - formulario',
+    name: 'checkout.html - todos los campos del formulario presentes',
     url: BASE + '/checkout.html',
     selector: '#checkout-form',
     check: async (page) => {
-      const fields = ['#first-name', '#last-name', '#email', '#address', '#city', '#zip', '#country', '#card-number', '#expiry', '#cvv', '#place-order-btn'];
+      const fields = ['#first-name','#last-name','#email','#address','#city','#zip','#country','#card-number','#expiry','#cvv','#place-order-btn'];
       for (const f of fields) {
         const n = await page.locator(f).count();
         if (n < 1) throw new Error(f + ' no encontrado');
@@ -83,31 +121,30 @@ const CHECKS = [
     }
   },
   {
-    name: 'checkout.html - place order',
+    name: 'checkout.html - completar pedido muestra confirmacion',
     url: null,
     selector: null,
     check: async (page) => {
-      // Precargar carrito
       await page.goto(BASE + '/index.html');
       await page.evaluate(() => {
         localStorage.setItem('wf_cart_v3', JSON.stringify([
-          { uid: 'fast_1', id: 'p001', brand: 'AVOID', name: 'TEE', price: 39.99, img: '', meta: 'M', qty: 1 }
+          { uid:'fast_1', id:'p001', brand:'AVOID', name:'TEE', price:39.99, img:'', meta:'M', qty:1 }
         ]));
       });
       await page.goto(BASE + '/checkout.html');
       await page.waitForSelector('#checkout-form');
-      await page.fill('#first-name', 'Fast');
-      await page.fill('#last-name', 'Test');
-      await page.fill('#email', 'fast@test.com');
-      await page.fill('#address', 'Test Street 1');
+      await page.fill('#first-name', 'Dario');
+      await page.fill('#last-name', 'CS');
+      await page.fill('#email', 'dario@avoid.store');
+      await page.fill('#address', 'Calle Mayor 1');
       await page.fill('#city', 'Madrid');
       await page.fill('#zip', '28001');
       await page.selectOption('#country', 'Spain');
       await page.fill('#card-number', '4111111111111111');
       await page.fill('#expiry', '12/27');
-      await page.fill('#cvv', '000');
+      await page.fill('#cvv', '123');
       await page.click('#place-order-btn');
-      await page.waitForSelector('#order-confirmation', { timeout: 3000 });
+      await page.waitForSelector('#order-confirmation', { timeout: 5000 });
       const visible = await page.locator('#order-confirmation').isVisible();
       if (!visible) throw new Error('#order-confirmation no visible');
     }
@@ -115,12 +152,14 @@ const CHECKS = [
 ];
 
 (async () => {
+  console.log('\n=== AVOID Store - pw_fast.js ===');
+  console.log('Iniciando servidor en ' + BASE + '...\n');
+
+  const server = await startServer();
   const browser = await chromium.launch({ headless: true });
   let passed = 0;
   let failed = 0;
   const start = Date.now();
-
-  console.log('\n=== AVOID Store - pw_fast.js (smoke tests) ===\n');
 
   for (const c of CHECKS) {
     const ctx = await browser.newContext();
@@ -142,9 +181,9 @@ const CHECKS = [
   }
 
   await browser.close();
+  server.close();
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-  console.log('\n=== Resultado: ' + passed + ' PASS / ' + failed + ' FAIL en ' + elapsed + 's ===');
-
+  console.log('\n=== Resultado: ' + passed + ' PASS / ' + failed + ' FAIL en ' + elapsed + 's ===\n');
   if (failed > 0) process.exit(1);
 })();
